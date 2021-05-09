@@ -1,0 +1,15 @@
+version: '3.8'
+services: 
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - '27017:27017'
+  app:
+    build: app/.
+    volumes: 
+      - ./data:/app/data
+    depends_on: 
+      - mongo
+    environment: 
+      DATABASE_URL: mongodb://mongo:27017
