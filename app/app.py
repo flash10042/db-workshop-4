@@ -15,7 +15,6 @@ while True:
 
         db = client.cp_database
         collection = db.zno_collection
-        helper = db.zno_helper_collection
 
         start_time = time.time()
 
@@ -29,15 +28,13 @@ while True:
                     row_num = 0
                     batch = list()
 
-                    res = helper.find_one({'_id' : year[0]})
+                    res = collection.find_one({'year' : year[0]}, sort=[('rows', -1)])
 
-                    if not res:
-                        helper.insert_one({'_id': year[0], 'rows': row_num, 'done': False})
-                    else:
-                        if res['done']:
+                    if res:
+                        if 'rows' not in res:
                             print(f'File {file_name} has been already processed. Going to next...')
                             continue
-                        for i in range(res['rows']):
+                        for i in range(res['rows'] + 1):
                             next(csv_reader)
                             row_num += 1
                     
@@ -53,16 +50,17 @@ while True:
                                     row[i] = row[i].replace(',', '.')
                                     row[i] = float(row[i])
                         
-                        batch.append(dict(zip(Config.COL_NAMES, year + row)))
+                        batch.append(dict(zip(Config.COL_NAMES, [row_num] + year + row)))
                         row_num += 1
 
                         if not row_num % BATCH_SIZE:
                             collection.insert_many(batch)
-                            helper.update_one({'_id':year[0]}, {'$set': {'rows': row_num}})
+                            #helper.update_one({'_id':year[0]}, {'$set': {'rows': row_num}})
                             batch = list()
                     if batch:
                         collection.insert_many(batch)
-                        helper.update_one({'_id':year[0]}, {'$set': {'rows': row_num, 'done': True}})
+                        collection.update_many({}, {'$unset': {'rows': 1}})
+                        #helper.update_one({'_id':year[0]}, {'$set': {'rows': row_num, 'done': True}})
                         batch = list()
 
         total = time.time() - start_time
